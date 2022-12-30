@@ -76,6 +76,10 @@ class ComputeLoss:
 
         try:
             if epoch_num < self.warmup_epoch:
+                # target_labels (Tensor): shape(bs, num_total_anchors) = (2, 8400)
+                # target_bboxes (Tensor): shape(bs, num_total_anchors, 4) = (2, 8400, 4)
+                # target_scores (Tensor): shape(bs, num_total_anchors, num_classes) = (2, 8400, 20)
+                # fg_mask (Tensor): shape(bs, num_total_anchors) = (2, 8400)
                 target_labels, target_bboxes, target_scores, fg_mask = \
                     self.warmup_assigner(
                         anchors,
@@ -84,6 +88,7 @@ class ComputeLoss:
                         gt_bboxes,
                         mask_gt,
                         pred_bboxes.detach() * stride_tensor)
+                temp = 0
             else:
                 target_labels, target_bboxes, target_scores, fg_mask = \
                     self.formal_assigner(
@@ -219,10 +224,8 @@ class BboxLoss(nn.Module):
         if num_pos > 0:
             # iou loss
             bbox_mask = fg_mask.unsqueeze(-1).repeat([1, 1, 4])
-            pred_bboxes_pos = torch.masked_select(pred_bboxes,
-                                                  bbox_mask).reshape([-1, 4])
-            target_bboxes_pos = torch.masked_select(
-                target_bboxes, bbox_mask).reshape([-1, 4])
+            pred_bboxes_pos = torch.masked_select(pred_bboxes, bbox_mask).reshape([-1, 4])
+            target_bboxes_pos = torch.masked_select(target_bboxes, bbox_mask).reshape([-1, 4])
             bbox_weight = torch.masked_select(
                 target_scores.sum(-1), fg_mask).unsqueeze(-1)
             loss_iou = self.iou_loss(pred_bboxes_pos,
